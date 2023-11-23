@@ -11,7 +11,8 @@ const crypto = require("crypto");
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '90d',
+    // expiresIn: '365d', // Set it to expire in 1 year
+    expiresIn: null, // Token doesn't expire
   });
 };
 const createSendToken = (user, statusCode, res) => {
@@ -96,6 +97,26 @@ exports.login = catchAsync(async (req, res, next) => {
     token: token,
   });
 });
+
+exports.protect = async (req, res, next) => {
+  let token;
+
+  // 1) Check if the authorization header exists
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  // 2) Verify the token
+  try {
+    const decoded = await promisify(jwt.verify)(token, 'rokaya-the-first-project-to-learn-nodejs'|| 'fallback-secret-key');
+
+    // 3) If the token is valid, attach user information to the request
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return next(new AppError('Invalid token', 401));
+  }
+};
 
 
 // exports.protect = catchAsync(async (req, res, next) => {

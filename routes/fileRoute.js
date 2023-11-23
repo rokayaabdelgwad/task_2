@@ -1,32 +1,11 @@
-// /routes/fileRoute.js
-
 const express = require('express');
 const router = express.Router();
-const fileService = require('../services/fileService');
+const fileController=require('../controllers/fileController')
+const multer = require('multer');// Multer configuration for handling file uploads
+const upload = multer({ storage: multer.memoryStorage() });// Store files in memory (you may adjust this based on your needs)
 
-// Middleware for handling file uploads
-const upload = require('../middleware/fileUpload');
-
-router.post('/upload', upload.single('file'), async (req, res) => {
-  try {
-    const userId = req.user?.id; // Use optional chaining
-    const roomId = req.body.roomId;
-    const file = req.file;
-
-    if (!userId) {
-      // Handle the case where the user is not authenticated
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const uploadedFile = await fileService.uploadFile(userId, roomId, file);
-    
-    // Respond with the uploaded file information
-    res.json(uploadedFile);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
+router.use(fileController.protect)
+router.post('/upload', upload.single('file'),fileController.uploadFile );
 
 
 module.exports = router;
