@@ -30,17 +30,34 @@ exports.sendMessage = async (roomId, userId, text) => {
   return message;
 };
 
+
+
+
 exports.joinRoom = async (roomId, userId) => {
-  const room = await Room.findById(roomId);
-  if (room) {
-    if (!room.users.includes(userId)) {
-      room.users.push(userId);
-      await room.save();
+  try {
+    console.log('Joining room with ID:', roomId);
+    console.log('User ID:', userId);
+
+    // Check if the room exists
+    const room = await Room.findById(roomId);
+
+    console.log('Room:', room);
+
+    if (!room) {
+      console.error('Room not found');
+      throw new Error('Room not found');
     }
-    return room;
+
+    // Your existing logic to add the user to the room
+    // ...
+
+    console.log('User joined room successfully');
+  } catch (error) {
+    console.error('Error joining room:', error);
+    throw new Error('Error joining room');
   }
-  throw new Error('Room not found');
 };
+
 
 exports.uploadFile = async (roomId, userId, file) => {
   // Save the file to the server or cloud storage

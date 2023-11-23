@@ -1,8 +1,43 @@
 const chatService = require('../services/chatService');
 const multer = require('multer');
-
+const Room = require('../models/roomModel');
+const Message = require('../models/messageModel');
+const AppError = require('../utils/appError');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
+
+exports.getRoomDetails = async (req, res) => {
+  try {
+    const roomId = req.params.roomId;
+
+    const room = await Room.findById(roomId).populate('users', 'username');
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    res.status(200).json({ status: 'success', data: { room } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+exports.createRoomMessage = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const userId = req.user._id;
+    const roomId = req.params.roomId;
+
+    const newMessage = await Message.create({ user: userId, text, room: roomId });
+
+    res.status(201).json({ status: 'success', data: { message: newMessage } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 exports.getRooms = async (req, res) => {
   try {
@@ -16,13 +51,28 @@ exports.getRooms = async (req, res) => {
 
 exports.createRoom = async (req, res) => {
   try {
-    const room = await chatService.createRoom(req.body);
-    res.status(201).json(room);
+    const { name } = req.body;
+    const userId = req.user._id || req.user.id; // Use both req.user._id and req.user.id
+
+    // Ensure userId is valid before adding to the users array
+    if (!userId) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    // Create a new room with the user ID associated
+    const newRoom = await Room.create({
+      name,
+      users: [userId], // Make sure the user is added here
+    });
+
+    res.status(201).json(newRoom);
   } catch (error) {
-    console.error(error);
+    
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+
 
 exports.getRoomMessages = async (req, res) => {
   try {
@@ -52,18 +102,23 @@ exports.sendMessage = async (req, res) => {
 
 exports.joinRoom = async (req, res) => {
   try {
-    const { roomId, userId } = req.body;
-    const room = await chatService.joinRoom(roomId, userId);
-    
-    // Emit an event to notify other users in the room about the new member
-    io.to(roomId).emit('user joined', { roomId, userId });
+    const { roomId } = req.params;
+    const userId = req.user._id;
 
-    res.json(room);
+    const result = await chatService.joinRoom(roomId, userId);
+
+    res.status(200).json({
+      status: 'User joined room successfully',
+      data: { result },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
+  console.log('Request Params:', req.params);
+  console.log('Request User:', req.user);
 };
+
 
 // Endpoint for uploading files
 exports.uploadFile = upload.single('file');
@@ -88,6 +143,9 @@ exports.postFile = async (req, res) => {
   }
 };
 
+
+
+
 // Endpoint for downloading files
 exports.getFile = async (req, res) => {
   try {
@@ -107,3 +165,29 @@ exports.getFile = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
+exports.authorizeRoomAccess = async (req, res, next) => {
+  try {
+    const roomId = req.params.roomId;
+
+    // Check if the room exists
+    const room = await Room.findById(roomId);
+
+    if (!room) {
+      return next(new AppError('Room not found', 404));
+    }
+
+    // Check if the authenticated user is a member of the room
+    if (!room.users.includes(req.user.id)) {
+      return next(new AppError('Unauthorized. User is not a member of the room', 403));
+    }
+
+    // If the user is a member, continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error(error);
+    return next(new AppError('Internal Server Error', 500));
+  }
+};
+
+

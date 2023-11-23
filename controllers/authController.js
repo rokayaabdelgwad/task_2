@@ -108,12 +108,48 @@ exports.protect = async (req, res, next) => {
 
   // 2) Verify the token
   try {
-    const decoded = await promisify(jwt.verify)(token, 'rokaya-the-first-project-to-learn-nodejs'|| 'fallback-secret-key');
+    const decoded = await promisify(jwt.verify)(token, 'rokaya-the-first-project-to-learn-nodejs' || 'fallback-secret-key');
+
 
     // 3) If the token is valid, attach user information to the request
     req.user = decoded;
+
+    // Adjust to handle both req.user._id and req.user.id
+    if (!req.user || !(req.user._id || req.user.id)) {
+      return next(new AppError('Invalid user ID', 401));
+    }
+
     next();
   } catch (err) {
+    return next(new AppError('Invalid token', 401));
+  }
+};
+exports.protectR = async (req, res, next) => {
+  let token;
+
+  // 1) Check if the authorization header exists
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  console.log('Received token:', token);
+
+  // 2) Verify the token
+  try {
+    const decoded = await promisify(jwt.verify)(token, 'rokaya-the-first-project-to-learn-nodejs' || 'fallback-secret-key');
+    console.log('Decoded user information:', decoded);
+
+    // 3) If the token is valid, attach user information to the request
+    req.user = decoded;
+
+    // 4) Check token expiration
+    if (decoded.exp < Math.floor(Date.now() / 1000)) {
+      return next(new AppError('Token has expired', 401));
+    }
+
+    next();
+  } catch (err) {
+    console.error('Token verification error:', err);
     return next(new AppError('Invalid token', 401));
   }
 };
