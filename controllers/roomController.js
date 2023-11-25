@@ -5,7 +5,7 @@ const Message = require('../models/messageModel');
 const AppError = require('../utils/appError');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-
+const io = require('../socket'); 
 
 exports.getRoomDetails = async (req, res) => {
   try {
@@ -85,11 +85,12 @@ exports.getRoomMessages = async (req, res) => {
   }
 };
 
+
 exports.sendMessage = async (req, res) => {
   try {
     const { roomId, userId, text } = req.body;
     const message = await chatService.sendMessage(roomId, userId, text);
-    
+
     // Emit the message to all users in the room
     io.to(roomId).emit('chat message', message);
 
@@ -99,7 +100,6 @@ exports.sendMessage = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
 /////////////////////////////////////////////////////////////////
 exports.joinRoom = async (req, res) => {
   try {

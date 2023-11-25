@@ -3,20 +3,21 @@ const router = express.Router();
 const roomController = require('../controllers/roomController');
 const authController = require('../controllers/authController');
 const fileController =require('../controllers/fileController')
-const multer = require('multer');// Multer configuration for handling file uploads
-const upload = multer({ storage: multer.memoryStorage() });// Store files in memory (you may adjust this based on your needs)
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
+const io = require('../socket')
 
-// Apply the protect middleware for user authentication
+io.on('connection', (socket) => {
+    // Handle socket events
+  });
+
 router.use(authController.protectR);
 
 router.post('/rooms/:roomId/join', roomController.authorizeRoomAccess, roomController.joinRoom);
 
-// router.post('/rooms/:roomId/join', roomController.joinRoom);
+
 
 router.param('roomId', roomController.authorizeRoomAccess);
-// router.use(roomController.authorizeRoomAccess)
-
-// Your room-related routes
 router.get('/rooms/:roomId', roomController.getRoomDetails);
 router.post('/rooms/:roomId/messages', roomController.createRoomMessage);
 router.get('/rooms', roomController.getRooms);
