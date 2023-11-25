@@ -100,6 +100,7 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
+/////////////////////////////////////////////////////////////////
 exports.joinRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
